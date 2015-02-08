@@ -7,9 +7,12 @@
 # 
 # http://www.apache.org/licenses/LICENSE-2.0
 #
+from __future__ import absolute_import
 from M2Crypto import X509
 from base64 import b64decode
 import httplib2
+import logging
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 class ValidationException(Exception):
@@ -29,8 +32,11 @@ class Version1(object):
         :return str:
         """
         if 'SigningCertURL' not in self.message.raw_message:
-            raise ValidationException("Invalid event message")
+            ex = ValidationException("Invalid event message")
+            logging.error(ex)
+            raise ex
         if self.message.raw_message['SigningCertURL'] in self.signing_certs:
+            logging.debug("SigningCertURL: [%s] exists in memory" % self.message.raw_message['SigningCertURL'])
             return self.signing_certs[self.message.raw_message['SigningCertURL']]
         return self._fetch_signing_key()
 
@@ -41,6 +47,7 @@ class Version1(object):
         :return str:
         """
         if not self.message.raw_message:
+            logging.info("no valid raw_message to encode")
             return ""
         msg = []
         for i in self.message.SIGNATURE_ATTR:
@@ -49,6 +56,7 @@ class Version1(object):
             msg.append(i)
             msg.append(self.message.raw_message[i])
         as_str = "\n".join(msg)
+        logging.debug("encoded message as: [%s]" % as_str)
         return as_str + "\n"
 
     def validate(self):
@@ -63,10 +71,9 @@ class Version1(object):
         pubkey.verify_update(self.encoded_message.encode())
         result = pubkey.verify_final(b64decode(self.message.signature))
         if result != 1:
-            raise Exception('Signature could not be verified')
-        else:
-        #     # Todo:: log it app.logger.debug("signature validated for messagae id:[%s]" % self.raw_message['MessageId'])
-            return True
+            logging.error('Signature could not be verified for MessageId:[%s]' % self.message.raw_message['MessageId'])
+            return False
+        return True
 
     def _fetch_signing_key(self):
         """
@@ -75,10 +82,5 @@ class Version1(object):
         h = httplib2.Http()
         response, content = h.request(self.message.raw_message['SigningCertURL'], 'GET')
         self.signing_certs[self.message.raw_message['SigningCertURL']] = content
-        # Todo:: log it app.log_exception(
-        # app.logger.debug(
-        #         "adding Signing Key:\n%s\n%s" %
-        #         (self.raw_message['SigningCertURL'], self.signators[self.raw_message['SigningCertURL']])
-        #     )
-        # )
+        logging.info("adding Signing Key: [%s]" % self.message.raw_message['SigningCertURL'])
         return self.signing_certs[self.message.raw_message['SigningCertURL']]

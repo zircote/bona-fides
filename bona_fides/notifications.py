@@ -11,6 +11,8 @@ from __future__ import absolute_import
 from . import crypto
 import httplib2
 import json
+import logging
+logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
 class BaseNotification():
@@ -21,41 +23,53 @@ class BaseNotification():
         :param raw_message str:
         :return bool:
         """
+        logging.debug("Message Recieved:\n>>BEGIN>>\n%s\n<<<END>>>" % raw_message)
+        self.debug_messages = []
         self.validate_signature = validate_signature
         self.raw_message = raw_message
         self.is_valid = None
-        #
         if 'Type' not in self.raw_message:
-            raise Exception
-        self.type = self.raw_message['Type']
-        #
+            self.debug_messages.append("[Type] not found")
+        else:
+            self.type = self.raw_message['Type']
         if 'MessageId' not in self.raw_message:
-            raise Exception
-        self.type = self.raw_message['MessageId']
-        #
+            self.debug_messages.append("[MessageId] not found")
+        else:
+            self.type = self.raw_message['MessageId']
         if 'TopicArn' not in self.raw_message:
-            raise Exception
-        self.type = self.raw_message['TopicArn']
-        #
+            self.debug_messages.append("[TopicArn] not found")
+        else:
+            self.type = self.raw_message['TopicArn']
         if 'Signature' not in self.raw_message:
-            raise Exception
-        self.signature = self.raw_message['Signature']
-        #
+            self.debug_messages.append("[Signature] not found")
+        else:
+            self.signature = self.raw_message['Signature']
         if 'SigningCertURL' not in self.raw_message:
-            raise Exception
-        self.signing_cert_url = self.raw_message['SigningCertURL']
-        #
+            self.debug_messages.append("[SigningCertURL] not found")
+        else:
+            self.signing_cert_url = self.raw_message['SigningCertURL']
         if 'Timestamp' not in self.raw_message:
-            raise Exception
-        self.timestamp = self.raw_message['Timestamp']
-        #
+            self.debug_messages.append("[Timestamp] not found")
+        else:
+            self.timestamp = self.raw_message['Timestamp']
         if 'SignatureVersion' not in self.raw_message:
-            raise Exception
-        self.signature_version = int(self.raw_message['SignatureVersion'])
-        if self.signature_version == 1:
-            if self.validate_signature:
-                validation = crypto.Version1(self)
-                self.is_valid = validation.validate()
+            self.debug_messages.append("[SignatureVersion] not found")
+        else:
+            self.signature_version = int(self.raw_message['SignatureVersion'])
+        if self.signature_version != 1:
+            self.debug_messages.append("UNKNOWN [SignatureVersion] found")
+        self._raise_errors_if_any()
+        if self.validate_signature:
+            validation = crypto.Version1(self)
+            self.is_valid = validation.validate()
+
+    def _raise_errors_if_any(self):
+        if len(self.debug_messages) > 0:
+            error_message = "\n".join(self.debug_messages)
+            ex = ValueError(message=error_message)
+            logging.error(ex)
+            raise ex
+        
 
 
 class SubscriptionConfirmation(BaseNotification):
@@ -85,15 +99,19 @@ class SubscriptionConfirmation(BaseNotification):
     def __int__(self, raw_message, validate_signature=True):
         super(SubscriptionConfirmation, self).__init__(raw_message, validate_signature)
         if 'Message' not in self.raw_message:
-            raise Exception
-        self.message = self.raw_message['Message']
+            self.debug_messages.append("[Message] not found")
+        else:
+            self.message = self.raw_message['Message']
         #
         if 'Token' not in self.raw_message:
-            raise Exception
-        self.token = self.raw_message['Token']
+            self.debug_messages.append("[Token] not found")
+        else:
+            self.token = self.raw_message['Token']
         if 'SubscribeURL' not in self.raw_message:
-            raise Exception
-        self.subscribe_url = self.raw_message['SubscribeURL']
+            self.debug_messages.append("[SubscribeURL] not found")
+        else:
+            self.subscribe_url = self.raw_message['SubscribeURL']
+        self._raise_errors_if_any()
 
     def subscribe(self):
         """
@@ -129,16 +147,17 @@ class Notification(BaseNotification):
                       'TopicArn',
                       'Type')
     
-
     def __init__(self, raw_message, validate_signature=True):
         super(Notification, self).__init__(raw_message, validate_signature)
         if 'Message' not in self.raw_message:
-            raise Exception
-        try:
-            self.decoded = json.loads(raw_message['Message'])
-        except ValueError:
-            pass
-        self.message = raw_message['Message']
+            self.debug_messages.append("[Message] not found")
+        else:
+            try:
+                self.message = json.loads(raw_message['Message'])
+            except ValueError:
+                pass
+            self.message = raw_message['Message']
+        self._raise_errors_if_any()
 
 
 class UnsubscribeConfirmation(BaseNotification):
@@ -156,5 +175,7 @@ class UnsubscribeConfirmation(BaseNotification):
     def __init__(self, raw_message, validate_signature=True):
         super(UnsubscribeConfirmation, self).__init__(raw_message, validate_signature)
         if 'Message' not in self.raw_message:
-            raise Exception
-        self.message = self.raw_message['Message']
+            self.debug_messages.append("[Message] not found")
+        else:
+            self.message = self.raw_message['Message']
+        self._raise_errors_if_any()
