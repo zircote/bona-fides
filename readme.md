@@ -34,6 +34,6 @@ OPTIONS = {
 sns_validation = bona_fides.Validator(OPTIONS)
 notification = sns_validation.handle(m)
 if notification.is_valid:
-    print notification.message
+    assert(notification.message)
 
 ```
