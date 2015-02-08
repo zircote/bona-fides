@@ -3,7 +3,7 @@ import os
 from setuptools import setup
 
 setup(
-    name='bona_fides',
+    name='bona-fides',
     version='0.0.1',
     long_description=__doc__,
     packages=['bona_fides'],
