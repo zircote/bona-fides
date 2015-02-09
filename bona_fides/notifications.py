@@ -15,7 +15,7 @@ import logging
 logging.getLogger(__name__).addHandler(logging.NullHandler())
 
 
-class BaseNotification():
+class BaseNotification(object):
     SIGNATURE_ATTR = []
 
     def __init__(self, raw_message, validate_signature=True):

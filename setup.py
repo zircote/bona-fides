@@ -13,7 +13,7 @@ from setuptools import setup
 
 setup(
     name='bona-fides',
-    version='0.0.2',
+    version='0.0.3',
     long_description=__doc__,
     packages=['bona_fides'],
     include_package_data=True,
